@@ -1,0 +1,60 @@
+#!/usr/bin/ksh
+
+
+SERVUSER=${SERVUSER}
+BEAHOME=${BEAHOME}
+URL=${T3_URL}
+
+# check the id is $SERVUSER
+echo "checking to make sure $SERVUSER is running this script ..."
+if test "$(/usr/bin/id -un)" == "$SERVUSER"
+then
+	echo "[ OK ]"
+	echo
+else
+	echo You need to be $SERVUSER to run this script
+	echo Exiting
+	echo
+	exit 1
+fi
+
+# check to make sure the instance is not already running"
+if [[ `/bin/ps -ef | grep "Dweblogic.Name=${MANAGED_SERVER_NAME}" | grep jdk | grep $SERVUSER | grep -v grep` != "" ]]
+then
+	echo "Looks like this instance is already running, please verify this"
+	echo "Exiting ...."
+	echo
+	exit 1
+fi
+
+echo "`date` starting ${MANAGED_SERVER_NAME} now"
+echo "Starting WebLogic Instance for ${MANAGED_SERVER_NAME}"
+echo
+
+cd $BEAHOME/domains/${DOMAIN_NAME}/
+
+nohup $BEAHOME/domains/${DOMAIN_NAME}/bin/startManaged_${MANAGED_SERVER_NAME} ${MANAGED_SERVER_NAME} $URL  2>&1 >> /sites/${DOMAIN_NAME}/site/common/logs/${MANAGED_SERVER_NAME}/${MANAGED_SERVER_NAME}_start.log &
+
+sleep 10
+
+INSTANCEJVMPID=`ps -ef | grep "Dweblogic.Name=${MANAGED_SERVER_NAME}"  | grep jdk | grep $SERVUSER | grep -v grep | awk '{print $2}'`
+
+if [[ "x$INSTANCEJVMPID" != "x" ]]
+then
+        echo "INSTANCEJVMPID is $INSTANCEJVMPID"
+        INSTANCESTARTWPID=`ps -ef | grep $INSTANCEJVMPID  | grep jdk | grep $SERVUSER | grep -v grep | awk '{print $3}'`
+        if [[ "x$INSTANCESTARTWPID" != "x" ]]
+        then
+                echo "INSTANCESTARTWJVMPID is $INSTANCESTARTWPID"
+        else
+		echo "The startWebLogic_${MANAGED_SERVER_NAME} script is not running yet, it  looks like the instance is not starting up ..."
+                echo
+        fi
+else
+	echo "The startWebLogic_${MANAGED_SERVER_NAME} script is not running yet, it  looks like the instance is not starting up ..."
+        echo
+fi
+
+echo "  You can type 'tail -f ../servers/${MANAGED_SERVER_NAME}/logs/${MANAGED_SERVER_NAME}_start.log' and look for RUNNING to see if the instance has fully started yet"
+echo
+

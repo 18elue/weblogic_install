@@ -1,0 +1,167 @@
+#!/usr/bin/ksh
+
+PATH=$PATH:/usr/bin:/bin:/usr/sbin:/usr/local/bin
+
+SERVUSER=${SERVUSER}
+BEAHOME=${BEAHOME}
+
+printusage()
+{
+    echo
+    echo "Usage:    $0  "
+    echo "Usage:    $0 dump "
+    echo "Usage:    $0 forcestop "
+    echo
+    echo "  This script can be run without any arguments to stop the instance nicely without providing a thread dump"
+    echo "  and without forcing the instance to stop."
+    echo
+    echo "  This script can be run with the dump argument to stop the instance nicely and provide a thread dump"
+    echo
+    echo "  This script can be run with the forcestop argument to force the instance to stop."
+    echo
+    exit 1
+}
+
+# check the id is $SERVUSER
+echo "checking to make sure $SERVUSER is running this script ..."
+if test "$(/usr/bin/id -un)" == "$SERVUSER"
+then
+	echo "[ OK ]"
+	echo
+else
+	echo You need to be $SERVUSER to run this script
+	echo Exiting
+	echo
+	exit 1
+fi
+
+VALUE=$1
+DUMP=false
+FORCESTOP=false
+
+if echo $VALUE | grep -i dump > /dev/null; then
+        DUMP=true
+elif echo $VALUE | grep -i forcestop > /dev/null; then
+        FORCESTOP=true
+else
+        if [[ $# != 0 ]];then
+                printusage
+                exit 1
+        fi
+fi
+
+ADMINJVMPID=`ps -ef | grep ${ADMIN_SERVER_NAME} | grep "Dweblogic.Name=${ADMIN_SERVER_NAME}" | grep jdk | grep -v grep | awk '{print $2}'`
+if [[ "x$ADMINJVMPID" != "x" ]]
+then
+        echo "ADMINJVMPID is $ADMINJVMPID"
+        echo
+
+	ADMINSTARTWPID=`ps -ef | grep $ADMINJVMPID | grep "java" | grep $SERVUSER | grep -v grep | awk '{print $3}'`
+        if [[ "x$ADMINSTARTWPID" != "x" ]]
+        then
+                echo "ADMINSTARTWPID is $ADMINSTARTWPID"
+                echo
+        fi
+fi
+
+if $DUMP
+then
+        if [[ "x$ADMINJVMPID" != "x" ]]
+        then
+                echo "Going to perform three thread dumps but the processes will not be stopped ..."
+                kill -3 $ADMINJVMPID
+                sleep 1
+                echo "first kill -3 $ADMINJVMPID done ..."
+                sleep 4
+                kill -3 $ADMINJVMPID
+                sleep 1
+                echo "second kill -3 $ADMINJVMPID done ..."
+                sleep 4
+                kill -3 $ADMINJVMPID
+                sleep 1
+                echo "third kill -3 $ADMINJVMPID done ..."
+                DDATE=`date +%y%m%d%H%M%S`
+                exit
+        else
+                echo "Unable to do a thread dump, because cannot determine the Java VM PID for the instance."
+                exit
+        fi
+fi
+
+echo "Stopping WebLogic Admin Server for ${DOMAIN_NAME} Domain"
+
+JDKDIR=$BEAHOME/jdk
+JAVA_HOME=$BEAHOME/jdk
+export CLASSPATH=$BEAHOME/wlserver_10.3/server/lib/weblogic_sp.jar:$BEAHOME/wlserver_10.3/server/lib/weblogic.jar
+export PATH=$JDKDIR/bin/:$PATH
+ADMIN_URL=${T3_URL}
+#ADMIN_URL=t3s://ADMIN_DNS:ADMINISTRATION_PORT
+
+DOMAIN_HOME="$BEAHOME/domains/${DOMAIN_NAME}"
+
+. ${DOMAIN_HOME}/bin/setDomainEnv.sh
+
+echo "connect(username='${WEBLOGIC_USER}', password='${WEBLOGIC_PWD}', url='${ADMIN_URL}', adminServerName='${SERVER_NAME}')" >"shutdown.py" 
+
+if $FORCESTOP
+then
+	echo "shutdown('${SERVER_NAME}','Server','',0,'true','')" >>"shutdown.py" 
+else
+	echo "shutdown('${SERVER_NAME}','Server')" >>"shutdown.py" 
+fi
+echo "exit()" >>"shutdown.py" 
+
+echo "Stopping Weblogic Server..."
+
+
+JAVA_OPTIONS="-Dweblogic.security.SSL.nojce=true -Dweblogic.security.SSL.trustedCAKeyStore=$BEAHOME/domains/${DOMAIN_NAME}/JKS/rootca.jks -Djavax.net.ssl.trustStore=$BEAHOME/domains/${DOMAIN_NAME}/JKS/rootca.jks -Djavax.net.ssl.trustStorePassword=password -Dweblogic.security.SSL.ignoreHostnameVerification=true -Djava.security.egd=file:/dev/./urandom"
+
+${JAVA_HOME}/bin/java -classpath $BEAHOME/wlserver_10.3/server/lib/weblogic.jar -Dpython.cachedir=$BEAHOME/domains/${DOMAIN_NAME}/wlstTemp ${JAVA_OPTIONS} weblogic.WLST shutdown.py  2>&1  >> /sites/${DOMAIN_NAME}/site/common/logs/${ADMIN_SERVER_NAME}/${ADMIN_SERVER_NAME}_stop.log
+
+for SECOND in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+do
+        if ! [[ $ADMINJVMPID == "" ]]
+        then
+                if ! [[ `ps -ef | grep $ADMINJVMPID | grep -v grep | grep $SERVUSER` != "" ]]
+                then
+                        sleep 1
+                        break
+                fi
+        fi
+        sleep 1
+done
+
+if [[ $ADMINJVMPID == "" ]]
+then
+	echo "ADMINJVMPID is unknown and the instance did not stop properly. Cannot kill it, please kill it manually ."
+	echo
+else
+        if [[ `ps -ef | grep $ADMINJVMPID | grep -v grep | grep $SERVUSER` != "" ]]
+        then
+                echo "Looks like the Admin Server Java VM is still running, going to kill it now ... "
+                kill -9 $ADMINJVMPID
+                echo "Killed $ADMINJVMPID ..."
+                echo
+        fi
+fi
+
+if [[ $ADMINSTARTWPID == "" ]]
+then
+	echo "ADMINSTARTWPID is unknown and the instance did not stop properly. Cannot kill it, please kill it manually ."
+	echo
+else
+
+        if [[ `ps -ef | grep $ADMINSTARTWPID | grep -v grep | grep $SERVUSER` != "" ]]
+        then
+                echo "Looks like the Admin Server startWebLogic.sh script is still running, going to kill it now ... "
+                kill -9 $ADMINSTARTWPID
+                echo "Killed $ADMINSTARTWPID ..."
+                echo
+        fi
+fi
+echo "  You can type 'tail -f ../servers/${ADMIN_SERVER_NAME}/logs/${ADMIN_SERVER_NAME}_stop.log' and see if the instance has been shut down"
+echo "Done"
+
+exit
+
+

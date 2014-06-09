@@ -1,0 +1,60 @@
+#!/usr/bin/ksh
+
+SERVUSER=${SERVUSER}
+BEAHOME=${BEAHOME}
+
+# check the id is $SERVUSER
+echo "checking to make sure $SERVUSER is running this script ..."
+if test "$(/usr/bin/id -un)" == "$SERVUSER"
+then
+	echo "[ OK ]"
+	echo
+else
+	echo You need to be $SERVUSER to run this script
+	echo Exiting
+	echo
+	exit 1
+fi
+
+if [[ `/bin/ps auxwww | grep $SERVUSER | grep "Dweblogic.Name=${ADMIN_SERVER_NAME}"  | grep jdk | grep -v grep` != "" ]]
+then
+	echo "Looks like the admin server for ${DOMAIN_NAME} Domain is already running, please verify this"
+	echo "Exiting ...."
+	echo
+	exit 1
+else
+	echo "starting WebLogic Admin Server for ${DOMAIN_NAME} Domain"
+	echo
+
+	cd $BEAHOME/domains/${DOMAIN_NAME}/
+
+	nohup $BEAHOME/domains/${DOMAIN_NAME}/bin/startWebLogic.sh  2>&1 >> /sites/${DOMAIN_NAME}/site/common/logs/${ADMIN_SERVER_NAME}/${ADMIN_SERVER_NAME}_start.log &
+
+	echo "It takes 1 to 2 minutes to start up the admin instance ..."
+	echo
+	echo "  Do NOT start any Managed Server Instances until the Admin Server Instance has started completely ..."
+	echo
+
+	sleep 10
+
+        ADMINJVMPID=`ps -ef | grep $SERVUSER | grep "Dweblogic.Name=${ADMIN_SERVER_NAME}" | grep jdk | grep -v grep | awk '{print $2}'`
+	if [[ "x$ADMINJVMPID" != "x" ]]
+	then
+		echo "ADMINJVMPID is $ADMINJVMPID" 
+               	ADMINSTARTWPID=`ps -ef | grep $ADMINJVMPID | grep $SERVUSER | grep jdk | grep -v grep | awk '{print $3}'`
+		if [[ "x$ADMINSTARTWPID" != "x" ]]
+		then
+			echo "ADMINSTARTWPID is $ADMINSTARTWPID" 
+		else
+			echo "The Java VM is not running yet, it looks like the admin instance is not starting up ..."
+			echo
+		fi
+	else
+		echo "The startWebLogic.sh script is not running yet, it looks like the admin instance is not starting up ..."
+		echo
+	fi
+
+	echo "  You can type 'tail -f ../servers/${ADMIN_SERVER_NAME}/logs/${ADMIN_SERVER_NAME}_start.log' and look for RUNNING to see if the instance has fully started yet"
+	echo
+fi
+

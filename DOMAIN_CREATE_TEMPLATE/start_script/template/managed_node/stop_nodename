@@ -1,0 +1,185 @@
+#!/usr/bin/ksh
+
+
+PATH=$PATH:/usr/bin:/bin:/usr/sbin:/usr/local/bin
+
+SERVUSER=${SERVUSER}
+BEAHOME=${BEAHOME}
+
+printusage()
+{
+    echo
+    echo "Usage:    $0  "
+    echo "Usage:    $0 dump "
+    echo "Usage:    $0 forcestop "
+    echo
+    echo "  This script can be run without any arguments to stop the instance nicely without providing a thread dump"
+    echo "  and without forcing the instance to stop."
+    echo
+    echo "  This script can be run with the dump argument to stop the instance nicely and provide a thread dump"
+    echo
+    echo "  This script can be run with the forcestop argument to force the instance to stop."
+    echo
+    exit 1
+}
+
+
+# check the id is $SERVUSER
+echo "checking to make sure $SERVUSER is running this script ..."
+if test "$(/usr/bin/id -un)" == "$SERVUSER"
+then
+	echo "[ OK ]"
+	echo
+else
+	echo You need to be $SERVUSER to run this script
+	echo Exiting
+	echo
+	exit 1
+fi
+
+VALUE=$1
+DUMP=false
+FORCESTOP=true
+
+if echo $VALUE | grep -i dump > /dev/null; then
+        DUMP=true
+elif echo $VALUE | grep -i forcestop > /dev/null; then
+        FORCESTOP=true
+else
+        if [[ $# != 0 ]];then
+                printusage
+                exit 1
+        fi
+fi
+
+INSTANCEJVMPID=`/bin/ps auxwww | grep "Dweblogic.Name=${MANAGED_SERVER_NAME}"  | grep jdk | grep $SERVUSER | grep -v grep | awk '{print $2}'`
+
+if [[ "x$INSTANCEJVMPID" != "x" ]]
+then
+        echo "INSTANCEJVMPID is $INSTANCEJVMPID"
+        INSTANCESTARTWPID=`ps -ef | grep $INSTANCEJVMPID  | grep jdk | grep $SERVUSER | grep -v grep | awk '{print $3}'`
+        if [[ "x$INSTANCESTARTWPID" != "x" ]]
+        then
+                echo "INSTANCESTARTWPID is $INSTANCESTARTWPID"
+        else
+                echo "cannot determine INSTANCESTARTWPID will try to stop the instance anyways ..."
+                echo
+        fi
+else
+        echo "cannot determine INSTANCEJVMPID will try to stop the instance anyways ..."
+        echo
+fi
+
+if $DUMP
+then
+        if [[ "x$INSTANCEJVMPID" != "x" ]]
+        then
+                echo "Going to perform three thread dumps but the processes will not be stopped ..."
+                kill -3 $INSTANCEJVMPID
+                sleep 1
+                echo "first kill -3 $INSTANCEJVMPID done ..."
+                sleep 4
+                kill -3 $INSTANCEJVMPID
+                sleep 1
+                echo "second kill -3 $INSTANCEJVMPID done ..."
+                sleep 4
+                kill -3 $INSTANCEJVMPID
+                sleep 1
+                echo "third kill -3 $INSTANCEJVMPID done ..."
+                DDATE=`date +%y%m%d%H%M%S`
+                exit
+        else
+                echo "Unable to do a thread dump, because cannot determine the Java VM PID for the instance."
+		exit
+        fi
+fi
+
+echo "Stopping WebLogic Server INSTANCE Domain"
+
+# WARNING: This file is created by the Configuration Wizard.
+# Any changes to this script may be lost when adding extensions to this configuration.
+# Call setDomainEnv here because we want to have shifted out the environment vars above
+JAVA_HOME=$BEAHOME/jdk
+export JAVA_HOME
+#CLASSPATH=BEAHOME/wlserver_10.3/server/lib/weblogic_sp.jar:BEAHOME/wlserver_10.3/server/lib/weblogic.jar
+CLASSPATH=$BEAHOME/wlserver_10.3/server/lib/weblogic_sp.jar:$BEAHOME/wlserver_10.3/server/lib/weblogic.jar
+export CLASSPATH
+export PATH=$JDK_HOME/bin/:$PATH
+#URL=t3://APP_SVR_DNS:APP_SVR_PORT
+ADMIN_URL=${T3_URL}
+
+DOMAIN_HOME="$BEAHOME/domains/${DOMAIN_NAME}"
+
+. ${DOMAIN_HOME}/bin/setDomainEnv.sh
+
+if [[ $INSTANCEJVMPID == "" ]]
+then
+        echo "unable to determine the vcr001 JVM PID to take a thread dump, continuing ..."
+        echo
+else
+        echo "taking a thread dump ..."
+        kill -3 $INSTANCEJVMPID
+        sleep 5
+fi
+
+echo "connect(username='${WEBLOGIC_USER}', password='${WEBLOGIC_PWD}', url='${ADMIN_URL}', adminServerName='${ADMIN_SERVER_NAME}')" >"shutdown_${MANAGED_SERVER_NAME}.py"
+if $FORCESTOP
+then
+	echo "shutdown('${MANAGED_SERVER_NAME}','Server','',0,'true','')" >>"shutdown_${MANAGED_SERVER_NAME}.py" 
+else
+	echo "shutdown('${MANAGED_SERVER_NAME}','Server')" >>"shutdown_${MANAGED_SERVER_NAME}.py" 
+fi
+echo "exit()" >>"shutdown_${MANAGED_SERVER_NAME}.py" 
+
+echo "Stopping Weblogic Server..."
+
+JAVA_OPTIONS="-Dweblogic.security.SSL.nojce=true -Dweblogic.security.SSL.trustedCAKeyStore=$BEAHOME/domains/${DOMAIN_NAME}/JKS/rootca.jks -Djavax.net.ssl.trustStore=$BEAHOME/domains/${DOMAIN_NAME}/JKS/rootca.jks -Djavax.net.ssl.trustStorePassword=password  -Dweblogic.security.SSL.ignoreHostnameVerification=true -Djava.security.egd=file:/dev/./urandom"
+
+${JAVA_HOME}/bin/java -classpath $BEAHOME/wlserver_10.3/server/lib/weblogic.jar -Dpython.cachedir=$BEAHOME/domains/${DOMAIN_NAME}/wlstTemp ${JAVA_OPTIONS} weblogic.WLST shutdown_${MANAGED_SERVER_NAME}.py  2>&1  >> /sites/${DOMAIN_NAME}/site/common/logs/${MANAGED_SERVER_NAME}/${MANAGED_SERVER_NAME}_stop.log
+
+for SECOND in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+do
+        if ! [[ $INSTANCEJVMPID == "" ]]
+        then
+                if ! [[ `ps -ef | grep $INSTANCEJVMPID | grep -v grep | grep $SERVUSER` != "" ]]
+                then
+                        sleep 1
+                        break
+                fi
+        fi
+        sleep 1
+done
+
+if [[ $INSTANCEJVMPID = "" ]]
+then
+	echo "INSTANCEJVMPID is unknown and the instance did not stop properly. Cannot kill it, please kill it manually ."
+	echo
+else
+        if [[ `ps -ef | grep $INSTANCEJVMPID | grep -v grep | grep $SERVUSER` != "" ]]
+        then
+                echo "Looks like the ${MANAGED_SERVER_NAME} Java VM is still running, going to kill it now ... "
+                kill -9 $INSTANCEJVMPID
+                echo "Killed $INSTANCEJVMPID ..."
+                echo
+        fi
+fi
+
+if [[ $INSTANCESTARTWPID = "" ]]
+then
+	echo "INSTANCESTARTWPID is unknown and the instance did not stop properly. Cannot kill it, please kill it manually ."
+	echo
+else
+        if [[ `ps -ef | grep $INSTANCESTARTWPID | grep -v grep | grep $SERVUSER` != "" ]]
+        then
+                echo "Looks like the ${MANAGED_SERVER_NAME} startWebLogic script is still running, going to kill it now ... "
+                kill -9 $INSTANCESTARTWPID
+                echo "Killed $INSTANCESTARTWPID ..."
+                echo
+        fi
+fi
+echo "  You can type 'tail -f ../servers/${MANAGED_SERVER_NAME}/logs/${MANAGED_SERVER_NAME}_stop.log' and see if the instance has been shut down"
+echo "Done"
+
+exit
+
+
