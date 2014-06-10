@@ -33,7 +33,7 @@ echo
 
 cd $BEAHOME/domains/${DOMAIN_NAME}/
 
-nohup $BEAHOME/domains/${DOMAIN_NAME}/bin/startManaged_${MANAGED_SERVER_NAME} ${MANAGED_SERVER_NAME} $URL  2>&1 >> /sites/${DOMAIN_NAME}/site/common/logs/${MANAGED_SERVER_NAME}/${MANAGED_SERVER_NAME}_start.log &
+nohup $BEAHOME/domains/${DOMAIN_NAME}/bin/startManaged_${MANAGED_SERVER_NAME} ${MANAGED_SERVER_NAME} $URL  2>&1 >> ${MANAGED_SERVER_LOG_DIR}/${MANAGED_SERVER_NAME}_start.log &
 
 sleep 10
 

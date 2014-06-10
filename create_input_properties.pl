@@ -35,10 +35,50 @@ for my $row (@all_row) {
 my @temp_row = @all_hash_row;
 @all_hash_row = ();
 for my $row (@temp_row) {
-	push @all_hash_row, $row unless ($row->{"Domain name"} eq '');
+	push @all_hash_row, $row unless ($row->{"Domain name"} eq '' || $row->{"Instance Type"} eq '');
 }
-my $weblogic_install_dir = create_one_input_file(\@all_hash_row);
-exec "./create_weblogic_install_dir.bash", $weblogic_install_dir;
+
+#seperate all hash row into clusters
+my @cluster_aref;
+my $temp_domain = $all_hash_row[0]->{"Domain name"};
+my @domain_row;
+for my $row (@all_hash_row) {
+	if ($row->{"Domain name"} eq $temp_domain) {
+		push @domain_row, $row;
+	}
+	else {
+		my @temp_row = @domain_row;
+		push @cluster_aref, \@temp_row;
+		@domain_row = ();
+		$temp_domain = $row->{"Domain name"};
+		push @domain_row, $row;
+	}	
+}
+push @cluster_aref, \@domain_row; # add the last cluster
+
+for my $cluster_aref (@cluster_aref) {
+	my $weblogic_install_dir = create_one_input_file($cluster_aref);
+	create_other_info_script($cluster_aref);
+	system "./create_weblogic_install_dir.bash", $weblogic_install_dir;
+}
+
+# this func is used to create extra shell command like create log dir
+sub create_other_info_script {
+	my ($row_aref) = @_;
+	my $input_file_name = "other_info.sh";
+	open (my $input_file_handler, ">", $input_file_name) or die "cannot create > $input_file_name : $!";
+	
+	printf $input_file_handler "#create log dir\n\n";
+	for my $row (@$row_aref) {
+		my $node_log_dir = sprintf "/usr/local/oracle/wls-latest/domains/%s/servers/%s/logs", $row->{"Domain name"}, $row->{"Instance Name"};
+		printf $input_file_handler "#node %s\n", $row->{"Instance Name"};
+		printf $input_file_handler "[[ -e %s ]] && rm -rf %s && echo \"%s dir deleted\"\n", $node_log_dir, $node_log_dir, $node_log_dir;
+		printf $input_file_handler "mkdir -p %s\n", $row->{"Log File"};
+		printf $input_file_handler "ln -s %s %s\n", $row->{"Log File"}, $node_log_dir;
+		printf $input_file_handler "echo soft link for %s created\n\n", $row->{"Instance Name"};
+	}
+	close $input_file_handler; 
+}
 
 sub create_one_input_file {
 	my ($row_aref) = @_;
@@ -67,18 +107,24 @@ sub create_one_input_file {
 	my $input_file_name = "input.properties";
 	open (my $input_file_handler, ">", $input_file_name) or die "cannot create > $input_file_name : $!";
 
+	my $beahome = '/usr/local/oracle/wls103602';
+
 	printf $input_file_handler "WEBLOGIC_USER=weblogic\n";
 	printf $input_file_handler "WEBLOGIC_PWD=%s\n", $admin_server_row->{"Weblogic Password"};
 	printf $input_file_handler "DOMAIN_NAME=%s\n\n", $admin_server_row->{"Domain name"};
 
-	printf $input_file_handler "BEAHOME=%s\n", '/usr/local/oracle/wls103602';
-	printf $input_file_handler "DOMAIN_DIR=%s\n", '$BEAHOME/domains/';
-	printf $input_file_handler "DOMAIN_TEMPLATE=%s\n", '$BEAHOME/wlserver_10.3/common/templates/domains/wls.jar';
-	printf $input_file_handler "JAVA_HOME=%s\n\n", '$BEAHOME/jdk';
-
+	printf $input_file_handler "BEAHOME=%s\n", $beahome;
+	printf $input_file_handler "DOMAIN_DIR=%s%s\n", $beahome, '/domains/';
+	printf $input_file_handler "DOMAIN_TEMPLATE=%s%s\n", $beahome, '/wlserver_10.3/common/templates/domains/wls.jar';
+	printf $input_file_handler "JAVA_HOME=%s%s\n", $beahome, '/jdk';
+	printf $input_file_handler "Xms=%s\n", $managed_server_row[0]->{"Xms(G)"};
+	printf $input_file_handler "Xmx=%s\n", $managed_server_row[0]->{"Xmx(G)"};
+	printf $input_file_handler "MaxPermSize=%s\n\n", $managed_server_row[0]->{"XX:MaxPermSize(G)"};
+			
 	printf $input_file_handler "ADMIN_SERVER_NAME=%s\n", $admin_server_row->{"Instance Name"};
 	printf $input_file_handler "ADMIN_SERVER_PORT=%s\n", $admin_server_row->{"HTTP Port"};
 	printf $input_file_handler "ADMIN_SERVER_ADDRESS=%s\n\n", $admin_server_row->{"IP Address"};
+	printf $input_file_handler "ADMIN_LOG_DIR=%s\n\n", $admin_server_row->{"Log File"};
 
 	printf $input_file_handler "MACHINE=%s\n\n", join(',', @machine);
 
@@ -95,7 +141,8 @@ sub create_one_input_file {
 		printf $input_file_handler "MANAGED_SERVER_%d_PORT=%s\n", $index, $managed_server->{"HTTP Port"};
 		printf $input_file_handler "MANAGED_SERVER_%d_ADDRESS=%s\n", $index, $managed_server->{"IP Address"};
 		printf $input_file_handler "MANAGED_SERVER_%d_MACHINE=%s\n", $index, $managed_server->{"Zone Name"};
-		printf $input_file_handler "MANAGED_SERVER_%d_CLUSTER=%s\n\n", $index, $managed_server->{"Cluster name"};
+		printf $input_file_handler "MANAGED_SERVER_%d_CLUSTER=%s\n", $index, $managed_server->{"Cluster name"};
+		printf $input_file_handler "MANAGED_SERVER_%d_LOG_DIR=%s\n\n", $index, $managed_server->{"Log File"};
 		$index += 1;
 	}
 
@@ -106,6 +153,6 @@ sub create_one_input_file {
 	$admin_server_row->{"Component"}=~s/ /_/g;
 	close $input_file_handler;
 	
-	my $dir = sprintf "%s_domain_create",$admin_server_row->{"Component"};
+	my $dir = sprintf "%s_domain_%s_create", $admin_server_row->{"Component"}, $admin_server_row->{"Domain name"};
 	return $dir;
 }

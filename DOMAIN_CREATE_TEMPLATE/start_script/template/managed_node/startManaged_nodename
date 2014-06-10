@@ -111,10 +111,10 @@ DOMAIN_HOME="$BEAHOME/domains/${DOMAIN_NAME}"
 
 if [ "$1" = "" ] ; then
 	#  Call Weblogic Server with our default params since the user did not specify any other ones
-	nohup ${DOMAIN_HOME}/bin/startWebLogic_${MANAGED_SERVER_NAME} nodebug nopointbase noiterativedev notestconsole 2>&1 >> /sites/${DOMAIN_NAME}/site/common/logs/${MANAGED_SERVER_NAME}/${MANAGED_SERVER_NAME}_start.log &
+	nohup ${DOMAIN_HOME}/bin/startWebLogic_${MANAGED_SERVER_NAME} nodebug nopointbase noiterativedev notestconsole 2>&1 >> ${MANAGED_SERVER_LOG_DIR}/${MANAGED_SERVER_NAME}_start.log &
 else
 	#  Call Weblogic Server with the params the user sent in INSTEAD of the defaults
-	nohup ${DOMAIN_HOME}/bin/startWebLogic_${MANAGED_SERVER_NAME} $1 $2 $3 $4 $5 $6 $7 $8 $9 2>&1 >> /sites/${DOMAIN_NAME}/site/common/logs/${MANAGED_SERVER_NAME}/${MANAGED_SERVER_NAME}_start.log &
+	nohup ${DOMAIN_HOME}/bin/startWebLogic_${MANAGED_SERVER_NAME} $1 $2 $3 $4 $5 $6 $7 $8 $9 2>&1 >> ${MANAGED_SERVER_LOG_DIR}/${MANAGED_SERVER_NAME}_start.log &
 fi
 
 

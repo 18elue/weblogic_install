@@ -28,7 +28,7 @@ else
 
 	cd $BEAHOME/domains/${DOMAIN_NAME}/
 
-	nohup $BEAHOME/domains/${DOMAIN_NAME}/bin/startWebLogic.sh  2>&1 >> /sites/${DOMAIN_NAME}/site/common/logs/${ADMIN_SERVER_NAME}/${ADMIN_SERVER_NAME}_start.log &
+	nohup $BEAHOME/domains/${DOMAIN_NAME}/bin/startWebLogic.sh  2>&1 >> ${ADMIN_LOG_DIR}/${ADMIN_SERVER_NAME}_start.log &
 
 	echo "It takes 1 to 2 minutes to start up the admin instance ..."
 	echo

@@ -71,7 +71,7 @@ export WL_HOME
 BEA_JAVA_HOME=""
 export BEA_JAVA_HOME
 
-SUN_JAVA_HOME="/sanfs/mnt/vol01/wls103602/jdk160_37"
+SUN_JAVA_HOME="/sanfs/mnt/vol01/wls103602/jdk"
 export SUN_JAVA_HOME
 
 if [ "${JAVA_VENDOR}" = "BEA" ] ; then
@@ -84,7 +84,7 @@ else
 	else
 		JAVA_VENDOR="Sun"
 		export JAVA_VENDOR
-		JAVA_HOME="/sanfs/mnt/vol01/wls103602/jdk160_37"
+		JAVA_HOME="/sanfs/mnt/vol01/wls103602/jdk"
 		export JAVA_HOME
 	fi
 fi
