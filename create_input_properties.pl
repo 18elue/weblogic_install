@@ -19,6 +19,8 @@ close $csv_file_handler;
 
 #change row from array to hash by using head column as the key
 my $head_row = shift @all_row;
+map { s/"//g } @$head_row; # delete colon if there is any
+
 my @all_hash_row;
 for my $row (@all_row) {
 	my $hash_row = {};
@@ -36,6 +38,22 @@ my @temp_row = @all_hash_row;
 @all_hash_row = ();
 for my $row (@temp_row) {
 	push @all_hash_row, $row unless ($row->{"Domain name"} eq '' || $row->{"Instance Type"} eq '');
+}
+
+#set default value if no specific set, like log dir,Xms(G),Xmx(G),XX:MaxPermSize(G)
+for my $row (@all_hash_row) {
+	if (!$row->{"Log File"}) {
+		$row->{"Log File"} = sprintf "/sites/%s/site/common/logs/103602_%s", $row->{"Domain name"}, $row->{"Instance Name"};
+	}
+	if (!$row->{"Xms(G)"}) {
+		$row->{"Xms(G)"} = '1024';
+	}
+	if (!$row->{"Xmx(G)"}) {
+		$row->{"Xmx(G)"} = '1024';
+	}
+	if (!$row->{"XX:MaxPermSize(G)"}) {
+		$row->{"XX:MaxPermSize(G)"} = '512';
+	}
 }
 
 #seperate all hash row into clusters
@@ -88,10 +106,15 @@ sub create_one_input_file {
 	my $admin_server_row;
 	my @managed_server_row;
 	for my $row (@$row_aref) {
-		if ($row->{"Instance Type"} eq "Admin") {
+		if ($row->{"Instance Type"} =~ /Admin/i) {
+			#check if there is only one admin server
+			if ($admin_server_row) {
+				warn "seems like there is more than one admin server, stop running";
+				exit 1;
+			}
 			$admin_server_row = $row;
 		}
-		elsif ($row->{"Instance Type"} eq "Manage") {
+		elsif ($row->{"Instance Type"} =~ /Mana/i) {
 			push @managed_server_row, $row;
 		}
 	}
