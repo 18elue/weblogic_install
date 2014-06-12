@@ -56,23 +56,13 @@ for my $row (@all_hash_row) {
 	}
 }
 
-#seperate all hash row into clusters
+#seperate all hash row into clusters,divided by component,then domain name.
+my @component_aref = divide_by_key(\@all_hash_row, "Component");
 my @cluster_aref;
-my $temp_domain = $all_hash_row[0]->{"Domain name"};
-my @domain_row;
-for my $row (@all_hash_row) {
-	if ($row->{"Domain name"} eq $temp_domain) {
-		push @domain_row, $row;
-	}
-	else {
-		my @temp_row = @domain_row;
-		push @cluster_aref, \@temp_row;
-		@domain_row = ();
-		$temp_domain = $row->{"Domain name"};
-		push @domain_row, $row;
-	}	
+for my $component (@component_aref) {
+	push @cluster_aref, divide_by_key($component, "Domain name");
 }
-push @cluster_aref, \@domain_row; # add the last cluster
+	
 
 for my $cluster_aref (@cluster_aref) {
 	my $weblogic_install_dir = create_one_input_file($cluster_aref);
@@ -178,4 +168,25 @@ sub create_one_input_file {
 	
 	my $dir = sprintf "%s_domain_%s_create", $admin_server_row->{"Component"}, $admin_server_row->{"Domain name"};
 	return $dir;
+}
+
+sub divide_by_key {
+	my ($all_hash_row, $key) = @_;
+	my @new_hash_row;
+	my @component_row;
+	my $category_value = $all_hash_row->[0]->{$key};
+	for my $row (@$all_hash_row) {
+		if ($row->{$key} eq $category_value) {
+			push @component_row, $row;
+		}
+		else {
+			my @temp_row = @component_row;
+			push @new_hash_row, \@temp_row;
+			@component_row = ();
+			$category_value = $row->{$key};
+			push @component_row, $row;
+		}
+	}
+	push @new_hash_row, \@component_row; # add the last component
+	return @new_hash_row;
 }
