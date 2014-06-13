@@ -121,13 +121,16 @@ sub create_one_input_file {
 	open (my $input_file_handler, ">", $input_file_name) or die "cannot create > $input_file_name : $!";
 
 	my $beahome = '/usr/local/oracle/wls103602';
+	my $userhome = $admin_server_row->{"App OS Userhome"};
+	$userhome =~ /(.*domains\/)/;
+	my $domain_dir =  $1;
 
 	printf $input_file_handler "WEBLOGIC_USER=weblogic\n";
 	printf $input_file_handler "WEBLOGIC_PWD=%s\n", $admin_server_row->{"Weblogic Password"};
 	printf $input_file_handler "DOMAIN_NAME=%s\n\n", $admin_server_row->{"Domain name"};
 
 	printf $input_file_handler "BEAHOME=%s\n", $beahome;
-	printf $input_file_handler "DOMAIN_DIR=%s%s\n", $beahome, '/domains/';
+	printf $input_file_handler "DOMAIN_DIR=%s\n", $domain_dir;
 	printf $input_file_handler "DOMAIN_TEMPLATE=%s%s\n", $beahome, '/wlserver_10.3/common/templates/domains/wls.jar';
 	printf $input_file_handler "JAVA_HOME=%s%s\n", $beahome, '/jdk';
 	printf $input_file_handler "Xms=%s\n", $managed_server_row[0]->{"Xms(G)"};
