@@ -1,7 +1,6 @@
 #!/usr/bin/ksh
 
 SERVUSER=${SERVUSER}
-BEAHOME=${BEAHOME}
 
 # check the id is $SERVUSER
 echo "checking to make sure $SERVUSER is running this script ..."
@@ -26,9 +25,9 @@ else
 	echo "starting WebLogic Admin Server for ${DOMAIN_NAME} Domain"
 	echo
 
-	cd $BEAHOME/domains/${DOMAIN_NAME}/
+	cd ${DOMAIN_DIR}/${DOMAIN_NAME}/
 
-	nohup $BEAHOME/domains/${DOMAIN_NAME}/bin/startWebLogic.sh  2>&1 >> ${ADMIN_LOG_DIR}/${ADMIN_SERVER_NAME}_start.log &
+	nohup ${DOMAIN_DIR}/${DOMAIN_NAME}/bin/startWebLogic.sh  2>&1 >> ${ADMIN_LOG_DIR}/${ADMIN_SERVER_NAME}_start.log &
 
 	echo "It takes 1 to 2 minutes to start up the admin instance ..."
 	echo

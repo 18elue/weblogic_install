@@ -305,7 +305,7 @@ sub post_set {
 	my ($fh, $prop) = @_;
 	my $domain_name = $prop->{DOMAIN_NAME};
 	my $java_home = $prop->{JAVA_HOME};
-	my $domain_home = $prop->{DOMAIN_DIR}.$domain_name;
+	my $domain_home = $prop->{DOMAIN_DIR}.'/'.$domain_name;
 	my $string = <<"POSTSET";
 # Set domain creation options. ----------------------------------------------
 startmode = 'prod'
@@ -329,7 +329,7 @@ POSTSET
 
 sub boot_properties {
 	my ($fh, $prop) = @_;
-	my $domain_home = $prop->{DOMAIN_DIR}.$prop->{DOMAIN_NAME};
+	my $domain_home = $prop->{DOMAIN_DIR}.'/'.$prop->{DOMAIN_NAME};
 	my $admin_server_name = $prop->{ADMIN_SERVER_NAME};
 	my $string = <<"BOOT";
 # If server start mode is set to 'prod', create boot.properties file. -------

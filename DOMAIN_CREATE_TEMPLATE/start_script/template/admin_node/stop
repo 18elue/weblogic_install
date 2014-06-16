@@ -97,7 +97,7 @@ export PATH=$JDKDIR/bin/:$PATH
 ADMIN_URL=${T3_URL}
 #ADMIN_URL=t3s://ADMIN_DNS:ADMINISTRATION_PORT
 
-DOMAIN_HOME="$BEAHOME/domains/${DOMAIN_NAME}"
+DOMAIN_HOME="${DOMAIN_DIR}/${DOMAIN_NAME}"
 
 . ${DOMAIN_HOME}/bin/setDomainEnv.sh
 
@@ -114,7 +114,7 @@ echo "exit()" >>"shutdown.py"
 echo "Stopping Weblogic Server..."
 
 
-JAVA_OPTIONS="-Dweblogic.security.SSL.nojce=true -Dweblogic.security.SSL.trustedCAKeyStore=$BEAHOME/domains/${DOMAIN_NAME}/JKS/rootca.jks -Djavax.net.ssl.trustStore=$BEAHOME/domains/${DOMAIN_NAME}/JKS/rootca.jks -Djavax.net.ssl.trustStorePassword=password -Dweblogic.security.SSL.ignoreHostnameVerification=true -Djava.security.egd=file:/dev/./urandom"
+JAVA_OPTIONS="-Dweblogic.security.SSL.nojce=true -Dweblogic.security.SSL.trustedCAKeyStore=${DOMAIN_DIR}/${DOMAIN_NAME}/JKS/rootca.jks -Djavax.net.ssl.trustStore=${DOMAIN_DIR}/${DOMAIN_NAME}/JKS/rootca.jks -Djavax.net.ssl.trustStorePassword=password -Dweblogic.security.SSL.ignoreHostnameVerification=true -Djava.security.egd=file:/dev/./urandom"
 
 ${JAVA_HOME}/bin/java -classpath $BEAHOME/wlserver_10.3/server/lib/weblogic.jar -Dpython.cachedir=$BEAHOME/domains/${DOMAIN_NAME}/wlstTemp ${JAVA_OPTIONS} weblogic.WLST shutdown.py  2>&1  >> ${ADMIN_LOG_DIR}/${ADMIN_SERVER_NAME}_stop.log
 

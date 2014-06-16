@@ -84,10 +84,9 @@ stopAll()
 
 # Call setDomainEnv here.
 
-DOMAIN_HOME="$BEAHOME/domains/${DOMAIN_NAME}"
+DOMAIN_HOME="${DOMAIN_DIR}/${DOMAIN_NAME}"
 
 . ${DOMAIN_HOME}/bin/setDomainEnv.sh $*
-
 
 #JAVA_OPTIONS="${JAVA_OPTIONS} -Dweblogic.security.SSL.nojce=true -Dweblogic.security.SSL.trustedCAKeyStore=BEAHOME/domains/SITENAME/JKS/SITENAMEtrust.jks -Djavax.net.ssl.trustStore=BEAHOME/domains/SITENAME/JKS/SITENAMEtrust.jks -Djavax.net.ssl.trustStorePassword=KEYPASS"
 
@@ -113,7 +112,7 @@ SAVE_JAVA_OPTIONS=""
 
 CLASSPATH="${SAVE_CLASSPATH}"
 
-#. "$BEAHOME/domains/${DOMAIN_NAME}/bin/ViamotoEnv.sh"
+#. "${DOMAIN_DIR}/${DOMAIN_NAME}/bin/ViamotoEnv.sh"
 #JAVA_OPTIONS="${JAVA_OPTIONS} -Dweblogic.webservice.i18n.charset=utf-8 -Dinstall_home=${INSTALL_HOME}"
 
 SAVE_CLASSPATH=""

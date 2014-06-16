@@ -1,7 +1,14 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use Cwd;
 use Data::Dumper;
+
+# variable share by all
+my $beahome = '/usr/local/oracle/wls-latest';
+my $domain_dir = $beahome.'/domains';
+my $domain_template = $beahome.'/wlserver_10.3/common/templates/domains/wls.jar';
+my $java_home = $beahome.'/jdk';
 
 #open csv file
 my $csv_file_name="test.csv";
@@ -67,6 +74,7 @@ for my $component (@component_aref) {
 for my $cluster_aref (@cluster_aref) {
 	my $weblogic_install_dir = create_one_input_file($cluster_aref);
 	create_other_info_script($cluster_aref);
+#	create_scp_script($cluster_aref, $weblogic_install_dir);
 	system "./create_weblogic_install_dir.bash", $weblogic_install_dir;
 }
 
@@ -78,7 +86,7 @@ sub create_other_info_script {
 	
 	printf $input_file_handler "#create log dir\n\n";
 	for my $row (@$row_aref) {
-		my $node_log_dir = sprintf "/usr/local/oracle/wls-latest/domains/%s/servers/%s/logs", $row->{"Domain name"}, $row->{"Instance Name"};
+		my $node_log_dir = sprintf "%s/%s/servers/%s/logs", $domain_dir, $row->{"Domain name"}, $row->{"Instance Name"};
 		printf $input_file_handler "#node %s\n", $row->{"Instance Name"};
 		printf $input_file_handler "[[ -e %s ]] && rm -rf %s && echo \"%s dir deleted\"\n", $node_log_dir, $node_log_dir, $node_log_dir;
 		printf $input_file_handler "mkdir -p %s\n", $row->{"Log File"};
@@ -87,6 +95,28 @@ sub create_other_info_script {
 	}
 	close $input_file_handler; 
 }
+
+=x
+sub create_scp_script {
+	my ($row_aref, $weblogic_install_dir) = @_;
+	my $file_name = "scp.sh";
+	open (my $file_handler, ">", $file_name) or die "cannot create > $file_name : $!";
+	
+	printf $file_handler "echo copy domain create file to all servers\n\n";
+	# get all hosts
+	my @host;
+	for my $row(@$row_aref) {
+		push @host, $row->{"IP Address"};
+	}
+	@host = do { my %seen; grep { !$seen{$_}++ } @host };
+	
+	my $run_script_dir = getcwd();
+	for my $host (@host) {
+		printf $file_handler "scp -r %s %s@%s:%s\n", ;
+	}
+	
+}
+=cut
 
 sub create_one_input_file {
 	my ($row_aref) = @_;
@@ -120,10 +150,7 @@ sub create_one_input_file {
 	my $input_file_name = "input.properties";
 	open (my $input_file_handler, ">", $input_file_name) or die "cannot create > $input_file_name : $!";
 
-	my $beahome = '/usr/local/oracle/wls103602';
-	my $userhome = $admin_server_row->{"App OS Userhome"};
-	$userhome =~ /(.*domains\/)/;
-	my $domain_dir =  $1;
+
 
 	printf $input_file_handler "WEBLOGIC_USER=weblogic\n";
 	printf $input_file_handler "WEBLOGIC_PWD=%s\n", $admin_server_row->{"Weblogic Password"};
@@ -131,8 +158,8 @@ sub create_one_input_file {
 
 	printf $input_file_handler "BEAHOME=%s\n", $beahome;
 	printf $input_file_handler "DOMAIN_DIR=%s\n", $domain_dir;
-	printf $input_file_handler "DOMAIN_TEMPLATE=%s%s\n", $beahome, '/wlserver_10.3/common/templates/domains/wls.jar';
-	printf $input_file_handler "JAVA_HOME=%s%s\n", $beahome, '/jdk';
+	printf $input_file_handler "DOMAIN_TEMPLATE=%s\n", $domain_template;
+	printf $input_file_handler "JAVA_HOME=%s\n", $java_home;
 	printf $input_file_handler "Xms=%s\n", $managed_server_row[0]->{"Xms(G)"};
 	printf $input_file_handler "Xmx=%s\n", $managed_server_row[0]->{"Xmx(G)"};
 	printf $input_file_handler "MaxPermSize=%s\n\n", $managed_server_row[0]->{"XX:MaxPermSize(G)"};

@@ -98,10 +98,10 @@ export JAVA_HOME
 SAMPLES_HOME="${WL_HOME}/samples"
 export SAMPLES_HOME
 
-DOMAIN_HOME="/sanfs/mnt/vol01/wls103602/domains/${DOMAIN_NAME}"
+DOMAIN_HOME="${DOMAIN_DIR}/${DOMAIN_NAME}"
 export DOMAIN_HOME
 
-LONG_DOMAIN_HOME="/sanfs/mnt/vol01/wls103602/domains/${DOMAIN_NAME}"
+LONG_DOMAIN_HOME="${DOMAIN_DIR}/${DOMAIN_NAME}"
 export LONG_DOMAIN_HOME
 
 if [ "${DEBUG_PORT}" = "" ] ; then
@@ -393,5 +393,5 @@ JAVA_VM="${JAVA_VM} -Dweblogic.security.identityAssertionTTL=-1 -Dweblogic.debug
 export JAVA_VM
 
 
-JAVA_OPTIONS="${JAVA_OPTIONS} -Dproperties.dir=/usr/local/oracle/wls103602/domains/${DOMAIN_NAME}/site/common/properties -Dcom.sun.xml.ws.transport.http.client.HttpTransportPipe.dump=true"
+JAVA_OPTIONS="${JAVA_OPTIONS} -Dproperties.dir=${DOMAIN_DIR}/${DOMAIN_NAME}/site/common/properties -Dcom.sun.xml.ws.transport.http.client.HttpTransportPipe.dump=true"
 export JAVA_OPTIONS
