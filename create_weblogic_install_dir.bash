@@ -15,12 +15,9 @@ source $weblogic_install_dir/domain_create/input.properties
 
 ## create admin server start script
 script_home=/home/6375ly/weblogic_install_script/$weblogic_install_dir/start_script
-[[ -e $script_home/$ADMIN_SERVER_NAME ]] && rm -rf $script_home/$ADMIN_SERVER_NAME && echo "dir $script_home/$ADMIN_SERVER_NAME deleted"
+cp -r $script_home/template/admin_node $script_home/$ADMIN_SERVER_ADDRESS && echo "admin server start script dir created"
 
-cp -r $script_home/template/admin_node $script_home/$ADMIN_SERVER_NAME
-echo "admin server dir created"
-
-cd $script_home/$ADMIN_SERVER_NAME
+cd $script_home/$ADMIN_SERVER_ADDRESS
 sed -i "s%\${SERVUSER}%$SERVUSER%g" $(grep \${SERVUSER} -l *)
 sed -i "s%\${BEAHOME}%$BEAHOME%g" $(grep \${BEAHOME} -l *)
 sed -i "s%\${T3_URL}%$T3_URL%g" $(grep \${T3_URL} -l *)
@@ -31,18 +28,18 @@ sed -i "s%\${WEBLOGIC_USER}%$WEBLOGIC_USER%g" $(grep \${WEBLOGIC_USER} -l *)
 sed -i "s%\${WEBLOGIC_PWD}%$WEBLOGIC_PWD%g" $(grep \${WEBLOGIC_PWD} -l *)
 sed -i "s%\${ADMIN_LOG_DIR}%$ADMIN_LOG_DIR%g" $(grep \${ADMIN_LOG_DIR} -l *)
 
-
 ## create managed server start script
 index=1;
 for MANAGED_SERVER_NAME in ${MANAGED_SERVER_NAMES[@]};do
-	[[ -e $script_home/$MANAGED_SERVER_NAME ]] && rm -rf $script_home/$MANAGED_SERVER_NAME && echo "dir $script_home/$MANAGED_SERVER_NAME deleted"
-
-	cp -r $script_home/template/managed_node $script_home/$MANAGED_SERVER_NAME
-	echo "managed server $MANAGED_SERVER_NAME dir created"
-	
 	log_dir_key=MANAGED_SERVER_${index}_LOG_DIR
+	address_key=MANAGED_SERVER_${index}_ADDRESS
 	index=$(($index+1))
-	cd $script_home/$MANAGED_SERVER_NAME
+	
+	[[ -e $script_home/${!address_key} ]] || mkdir $script_home/${!address_key}
+	cp $script_home/template/managed_node/* $script_home/${!address_key} && echo "managed server $MANAGED_SERVER_NAME dir created"
+	
+
+	cd $script_home/${!address_key}
 	sed -i "s%\${SERVUSER}%$SERVUSER%g" $(grep \${SERVUSER} -l *)
 	sed -i "s%\${BEAHOME}%$BEAHOME%g" $(grep \${BEAHOME} -l *)
 	sed -i "s%\${T3_URL}%$T3_URL%g" $(grep \${T3_URL} -l *)
@@ -65,5 +62,6 @@ for MANAGED_SERVER_NAME in ${MANAGED_SERVER_NAMES[@]};do
 	done
 done
 
-## remove template dir
+
+# remove template dir
 rm -rf $script_home/template
