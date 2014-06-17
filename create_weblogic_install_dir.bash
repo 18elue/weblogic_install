@@ -8,7 +8,7 @@ weblogic_install_dir=$1
 [[ -e $weblogic_install_dir ]] && rm -rf $weblogic_install_dir && echo "dir $weblogic_install_dir deleted"
 cp -r DOMAIN_CREATE_TEMPLATE $weblogic_install_dir
 mv input.properties $weblogic_install_dir/domain_create
-mv other_info.sh $weblogic_install_dir/domain_create
+mv other_info*.sh $weblogic_install_dir/domain_create
 
 # create start script
 source $weblogic_install_dir/domain_create/input.properties
