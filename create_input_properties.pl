@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use Cwd;
+use File::Path qw(make_path);
 use Data::Dumper;
 
 # variable share by all
@@ -74,9 +75,47 @@ for my $component (@component_aref) {
 for my $cluster_aref (@cluster_aref) {
 	my $weblogic_install_dir = create_one_input_file($cluster_aref);
 	create_other_info_script($cluster_aref);
+	create_secureCRT_config($cluster_aref);
 #	create_scp_script($cluster_aref, $weblogic_install_dir);
 	system "./create_weblogic_install_dir.bash", $weblogic_install_dir;
 }
+
+sub create_secureCRT_config {
+	my ($row_aref) = @_;
+	
+	# get all rows with uniq host
+	my @host_uniq_row = @$row_aref;
+	
+	@host_uniq_row = do { my %seen; grep { !$seen{$_->{"IP Address"}}++ } @host_uniq_row };
+	
+	my $config_dir = "/home/6375ly/VanDyke/Config/Sessions/WLS";
+	my $template_filename = "/home/6375ly/weblogic_install_script/SecureCRT_TEMPLATE/connect.ini";
+	
+	# read in template file
+	open (my $template_fh, "<", $template_filename) or die "cannot read file $template_filename : $!";
+	my $template_file_content;
+	while (<$template_fh>) {
+		$template_file_content .= $_;
+	}
+	close $template_fh;
+
+	# create config file for each host
+	for my $row (@host_uniq_row) {
+		my $file_dir = sprintf "$config_dir/%s/%s", $row->{"Application"}, $row->{"Env"};
+		make_path($file_dir); # create file dir
+		
+		my $component = $row->{"Component"};
+		$component =~ s/ /_/g;		
+		my $file_name = sprintf "$file_dir/%s_%s.ini", $component, $row->{"IP Address"};
+		
+		open (my $config_fh, ">", $file_name) or die "cannot create file $file_name : $!";
+		my $file_content = $template_file_content;
+		$file_content =~ s/\${HOST_NAME}/$row->{"IP Address"}/g;
+		$file_content =~ s/\${USER_NAME}/$row->{"App OS Username"}/g;		
+		print $config_fh $file_content;
+	}
+}
+
 
 # this func is used to create extra shell command like create log dir
 sub create_other_info_script {
