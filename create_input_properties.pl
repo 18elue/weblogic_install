@@ -152,7 +152,7 @@ sub create_other_info_script {
 	# copy start script
 	for my $host (keys %ip_to_file_handler) {
 		printf {$ip_to_file_handler{$host}} "#copy start script\n";
-		printf {$ip_to_file_handler{$host}} "cp ../start_script/$host/* ~/bin\n\n";
+		printf {$ip_to_file_handler{$host}} "cp ../start_script/$host/* $domain_dir/%s/bin\n\n", $row_aref->[0]->{"Domain name"};
 	}
 	
 	# close file handler
