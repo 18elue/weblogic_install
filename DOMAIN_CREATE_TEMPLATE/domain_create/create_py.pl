@@ -53,6 +53,7 @@ sub read_property_file {
 				num  => delete $prop->{$server."_NUM"},
 				name => delete $prop->{$server."_NAME"},
 				port => delete $prop->{$server."_PORT"},
+				https_port => delete $prop->{$server."_HTTPS_PORT"},
 				address => delete $prop->{$server."_ADDRESS"},
 				machine => delete $prop->{$server."_MACHINE"},
 				cluster => delete $prop->{$server."_CLUSTER"},
@@ -484,6 +485,7 @@ sub config_managed_server {
 	for my $server (@$managed_server_aref) {
 		my $name = $server->{name};
 		my $address = $server->{address};
+		my $https_port = $server->{https_port};
 		my $string = <<"MANAGED";
 
 print 'setting $name instance parameters'
@@ -519,7 +521,17 @@ set('NumberOfFilesLimited','true')
 set('FileName','logs/access.log')
 
 MANAGED
-	print $fh $string;
+		print $fh $string;
+		if($https_port) {
+			$string = <<"MANAGED";
+print 'setting $name https port'
+cd('/Servers/$name/SSL/$name')
+cmo.setEnabled(true)
+cmo.setListenPort($https_port)
+
+MANAGED
+		}
+		print $fh $string;
 	}
 }
 

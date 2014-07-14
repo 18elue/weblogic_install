@@ -245,6 +245,7 @@ sub create_one_input_file {
 		printf $input_file_handler "MANAGED_SERVER_%d_NUM=%s\n", $index, $index;
 		printf $input_file_handler "MANAGED_SERVER_%d_NAME=%s\n", $index, $managed_server->{"Instance Name"};
 		printf $input_file_handler "MANAGED_SERVER_%d_PORT=%s\n", $index, $managed_server->{"HTTP Port"};
+		printf $input_file_handler "MANAGED_SERVER_%d_HTTPS_PORT=%s\n", $index, $managed_server->{"HTTPS Port"};
 		printf $input_file_handler "MANAGED_SERVER_%d_ADDRESS=%s\n", $index, $managed_server->{"IP Address"};
 		printf $input_file_handler "MANAGED_SERVER_%d_MACHINE=%s\n", $index, $managed_server->{"Zone Name"};
 		printf $input_file_handler "MANAGED_SERVER_%d_CLUSTER=%s\n", $index, $managed_server->{"Cluster name"};
