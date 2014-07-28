@@ -66,28 +66,33 @@ for my $row (@all_hash_row) {
 
 #seperate all hash row into clusters,divided by component,then domain name.
 my @component_aref = divide_by_key(\@all_hash_row, "Component");
-my @cluster_aref;
+@component_aref = merge_componet(\@component_aref);
+my @domain_aref;
 for my $component (@component_aref) {
-	push @cluster_aref, divide_by_key($component, "Domain name");
+	push @domain_aref, divide_by_key($component, "Domain name");
 }
-	
 
-for my $cluster_aref (@cluster_aref) {
-	my $weblogic_install_dir = create_one_input_file($cluster_aref);
-	create_other_info_script($cluster_aref);
-	create_secureCRT_config($cluster_aref);
-#	create_scp_script($cluster_aref, $weblogic_install_dir);
+
+#the main procedure of create input properties
+my $scp_script_filename = "scp.sh";
+open (my $scp_file_handler, ">", $scp_script_filename) or die "cannot create > $scp_script_filename : $!";	
+for my $domain_aref (@domain_aref) {
+	my $weblogic_install_dir = create_one_input_file($domain_aref);
+	create_other_info_script($domain_aref);
+	create_secureCRT_config($domain_aref);
+	create_scp_script($scp_file_handler, $domain_aref, $weblogic_install_dir);
 	system "./create_weblogic_install_dir.bash", $weblogic_install_dir;
 }
+close $scp_file_handler;
 
 sub create_secureCRT_config {
 	my ($row_aref) = @_;
-	
+
 	# get all rows with uniq host
-	my @host_uniq_row = @$row_aref;
+	my @host_uniq_row;
 	
-	@host_uniq_row = do { my %seen; grep { !$seen{$_->{"IP Address"}}++ } @host_uniq_row };
-	
+	@host_uniq_row = do { my %seen; grep { !$seen{$_->{"IP Address"}}++ } @$row_aref};
+
 	my $config_dir = "/home/6375ly/VanDyke/Config/Sessions/WLS";
 	my $template_filename = "/home/6375ly/weblogic_install_script/SecureCRT_TEMPLATE/connect.ini";
 	
@@ -159,27 +164,16 @@ sub create_other_info_script {
 	map { close $_ } values %ip_to_file_handler; 
 }
 
-=x
 sub create_scp_script {
-	my ($row_aref, $weblogic_install_dir) = @_;
-	my $file_name = "scp.sh";
-	open (my $file_handler, ">", $file_name) or die "cannot create > $file_name : $!";
+	my ($file_handler, $row_aref, $weblogic_install_dir) = @_;
 	
-	printf $file_handler "echo copy domain create file to all servers\n\n";
-	# get all hosts
-	my @host;
-	for my $row(@$row_aref) {
-		push @host, $row->{"IP Address"};
-	}
-	@host = do { my %seen; grep { !$seen{$_}++ } @host };
+	my @uniq_host_row;
+	@uniq_host_row = do { my %seen; grep { !$seen{$_->{"IP Address"}}++ } @$row_aref };	
 	
-	my $run_script_dir = getcwd();
-	for my $host (@host) {
-		printf $file_handler "scp -r %s %s@%s:%s\n", ;
-	}
-	
+	for my $row (@uniq_host_row) {
+		printf $file_handler "scp -r %s %s@%s:%s\n", $weblogic_install_dir, $row->{"App OS Username"}, $row->{"IP Address"}, '/var/tmp';
+	}	
 }
-=cut
 
 sub create_one_input_file {
 	my ($row_aref) = @_;
@@ -284,3 +278,22 @@ sub divide_by_key {
 	push @new_hash_row, \@component_row; # add the last component
 	return @new_hash_row;
 }
+
+sub merge_componet {
+	my ($component_aref_aref) = @_;
+	my @component_aref = @$component_aref_aref;
+	my @final_component;
+	for my $component (@component_aref) {
+		my @admin_instance = grep { $_->{"Instance Type"} =~ /Admin/i } @$component;
+		if ( scalar @admin_instance) {
+			push @final_component, $component;
+		}
+		else {    # if component does not have admin instance, add it into before component
+			my $before_component = pop @final_component;
+			push @$before_component, @$component;
+			push @final_component, $before_component;
+		}
+	}
+	return @final_component;
+}
+
