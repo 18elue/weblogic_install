@@ -85,6 +85,7 @@ sub read_property_file {
 	$i=1;
 	for my $server (@$managed_server_aref) {
 		my $cluster = $server->{cluster};
+		last unless $cluster;
 		if (!$cluster_href->{$cluster}) {
 			$cluster_href->{$cluster}->{num} = $i;
 			$cluster_href->{$cluster}->{node} = [];
