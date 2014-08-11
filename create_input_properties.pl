@@ -36,6 +36,12 @@ for my $row (@all_row) {
 	for my $column (@$row) {
 		my $key = $head_row->[$index];
 		$index += 1;
+		# change component content
+		if ($key eq "Component") {
+			$column =~ s/ /_/g;
+			$column =~ s/\(/_/g;
+			$column =~ s/\)/_/g;	
+		}
 		$hash_row->{$key} = $column;
 	}
 	push @all_hash_row, $hash_row;
@@ -72,7 +78,6 @@ for my $component (@component_aref) {
 	push @domain_aref, divide_by_key($component, "Domain name");
 }
 
-
 #the main procedure of create input properties
 my $scp_script_filename = "scp.sh";
 open (my $scp_file_handler, ">", $scp_script_filename) or die "cannot create > $scp_script_filename : $!";	
@@ -81,9 +86,39 @@ for my $domain_aref (@domain_aref) {
 	create_other_info_script($domain_aref);
 	create_secureCRT_config($domain_aref);
 	create_scp_script($scp_file_handler, $domain_aref, $weblogic_install_dir);
+	
+	#this is temporary used
+	create_temp_script_for_root($domain_aref);
+	create_temp_script_for_user($domain_aref);
 	system "./create_weblogic_install_dir.bash", $weblogic_install_dir;
 }
 close $scp_file_handler;
+
+sub create_temp_script_for_root {
+	my ($row_aref) = @_;
+	my $file_name = "root_temp_script.sh";
+	open (my $fh, ">", $file_name) or die "cannot create > $file_name : $!";
+	printf $fh "rm -rf /sites \n";
+	printf $fh "ln -s /sanfs/mnt/vol02 /sites \n";
+	printf $fh "chown -R %s:%s /sanfs \n", $row_aref->[0]->{"App OS Username"}, $row_aref->[0]->{"Group name"};
+	printf $fh "rm -rf /usr/local/oracle \n";
+	printf $fh "ln -s /sanfs/mnt/vol01 /usr/local/oracle \n";
+	printf $fh "rm -rf /usr/local/oracle/wls-latest \n";
+	close $fh;
+}
+
+sub create_temp_script_for_user {
+	my ($row_aref) = @_;
+	my $file_name = "user_temp_script.sh";
+	open (my $fh, ">", $file_name) or die "cannot create > $file_name : $!";
+	printf $fh "scp -r Bgaa\@113.52.160.29:/usr/local/oracle/wls103602.tar.gz /usr/local/oracle/ \n";
+	printf $fh "tar -xf /usr/local/oracle/wls103602.tar.gz -C /usr/local/oracle/ \n";
+	printf $fh "ln -s /usr/local/oracle/wls103602 /usr/local/oracle/wls-latest \n";
+	printf $fh "rm -rf /usr/local/oracle/wls103602.tar.gz \n";
+	printf $fh "chmod -R 777 /usr/local/oracle/wls103602 \n";
+	printf $fh "chmod -R 777 /sanfs/mnt/vol02 \n";
+	close $fh;
+}
 
 sub create_secureCRT_config {
 	my ($row_aref) = @_;
@@ -110,7 +145,7 @@ sub create_secureCRT_config {
 		make_path($file_dir); # create file dir
 		
 		my $component = $row->{"Component"};
-		$component =~ s/ /_/g;		
+	
 		my $file_name = sprintf "$file_dir/%s_%s.ini", $component, $row->{"IP Address"};
 		
 		open (my $config_fh, ">", $file_name) or die "cannot create file $file_name : $!";
@@ -191,11 +226,17 @@ sub create_one_input_file {
 			}
 			$admin_server_row = $row;
 		}
-		elsif ($row->{"Instance Type"} =~ /Mana/i) {
+		elsif ($row->{"Instance Type"} =~ /\w+/) {
 			push @managed_server_row, $row;
 		}
 	}
 
+	# check if admin server and managed server is all there
+	if(!$admin_server_row || ! scalar @managed_server_row) {
+		warn "no admin server or managed server";
+		exit 1;
+	}
+	
 	# get all machines
 	my @machine;
 	for my $row(@$row_aref) {
@@ -251,7 +292,7 @@ sub create_one_input_file {
 	printf $input_file_handler "MANAGED_SERVER_NAMES=(%s)\n", join(' ', map {$_->{"Instance Name"}} @managed_server_row);
 	printf $input_file_handler "SERVUSER=%s\n", $admin_server_row->{"App OS Username"};
 	printf $input_file_handler "T3_URL=t3://%s:%s\n", $admin_server_row->{"IP Address"}, $admin_server_row->{"HTTP Port"};
-	$admin_server_row->{"Component"}=~s/ /_/g;
+
 	close $input_file_handler;
 	
 	my $dir = sprintf "%s_domain_%s_create", $admin_server_row->{"Component"}, $admin_server_row->{"Domain name"};

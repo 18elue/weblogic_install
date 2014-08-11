@@ -9,6 +9,8 @@ weblogic_install_dir=$1
 cp -r DOMAIN_CREATE_TEMPLATE $weblogic_install_dir
 mv input.properties $weblogic_install_dir/domain_create
 mv other_info*.sh $weblogic_install_dir/domain_create
+mv root_temp_script.sh $weblogic_install_dir/domain_create
+mv user_temp_script.sh $weblogic_install_dir/domain_create
 
 # create start script
 source $weblogic_install_dir/domain_create/input.properties
