@@ -115,8 +115,8 @@ sub create_temp_script_for_user {
 	printf $fh "tar -xf /usr/local/oracle/wls103602.tar.gz -C /usr/local/oracle/ \n";
 	printf $fh "ln -s /usr/local/oracle/wls103602 /usr/local/oracle/wls-latest \n";
 	printf $fh "rm -rf /usr/local/oracle/wls103602.tar.gz \n";
-	printf $fh "chmod -R 777 /usr/local/oracle/wls103602 \n";
-	printf $fh "chmod -R 777 /sanfs/mnt/vol02 \n";
+#	printf $fh "chmod -R 777 /usr/local/oracle/wls103602 \n";
+#	printf $fh "chmod -R 777 /sanfs/mnt/vol02 \n";
 	close $fh;
 }
 
